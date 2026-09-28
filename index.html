@@ -1,0 +1,1015 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gregg Revision — Shorthand Revision Reader</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'sans-serif'],
+                        serif: ['Georgia', 'Cambria', 'Times New Roman', 'serif'],
+                        mono: ['JetBrains Mono', 'Menlo', 'Monaco', 'Courier New', 'monospace']
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Georgia&family=JetBrains+Mono:wght@400;500&display=swap');
+
+        /* Default Midnight Dark Theme */
+        body.theme-dark {
+            background-color: #0b0f19;
+            color: #e2e8f0;
+        }
+        body.theme-dark .card-bg {
+            background-color: #131b2e;
+            border-color: #1e293b;
+        }
+        body.theme-dark .input-bg {
+            background-color: #0f172a;
+            border-color: #334155;
+            color: #f8fafc;
+        }
+        body.theme-dark .reading-canvas {
+            background-color: #111827;
+            box-shadow: 0 8px 30px -4px rgba(0, 0, 0, 0.6);
+            border-color: #1f2937;
+        }
+        body.theme-dark .tag-exact {
+            color: #fca5a5;
+            background-color: rgba(185, 28, 28, 0.35);
+            border-bottom: 2px solid #f87171;
+        }
+        body.theme-dark .tag-modified {
+            color: #fde047;
+            background-color: rgba(180, 83, 9, 0.35);
+            border-bottom: 2px dashed #fbbf24;
+        }
+        body.theme-dark .tag-brief {
+            color: #5eead4;
+            background-color: rgba(15, 118, 110, 0.35);
+            border-bottom: 2px solid #2dd4bf;
+        }
+
+        /* Light Theme Option */
+        body.theme-light {
+            background-color: #f8fafc;
+            color: #0f172a;
+        }
+        body.theme-light .card-bg {
+            background-color: #ffffff;
+            border-color: #e2e8f0;
+        }
+        body.theme-light .input-bg {
+            background-color: #ffffff;
+            border-color: #cbd5e1;
+            color: #0f172a;
+        }
+        body.theme-light .reading-canvas {
+            background-color: #ffffff;
+            box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.05);
+            border-color: #e2e8f0;
+        }
+        body.theme-light .tag-exact {
+            color: #b91c1c;
+            background-color: rgba(254, 226, 226, 0.75);
+            border-bottom: 2px solid #ef4444;
+        }
+        body.theme-light .tag-modified {
+            color: #b45309;
+            background-color: rgba(254, 243, 199, 0.85);
+            border-bottom: 2px dashed #f59e0b;
+        }
+        body.theme-light .tag-brief {
+            color: #0f766e;
+            background-color: rgba(204, 251, 241, 0.85);
+            border-bottom: 2px solid #14b8a6;
+        }
+
+        /* Warm Sepia Theme Option */
+        body.theme-sepia {
+            background-color: #f7f1e3;
+            color: #362b1d;
+        }
+        body.theme-sepia .card-bg {
+            background-color: #f0e5d1;
+            border-color: #e2d3b7;
+        }
+        body.theme-sepia .input-bg {
+            background-color: #fcf8f0;
+            border-color: #d8c6a7;
+            color: #2c2115;
+        }
+        body.theme-sepia .reading-canvas {
+            background-color: #fcf7ec;
+            box-shadow: 0 4px 20px -2px rgba(70, 50, 20, 0.06);
+            border-color: #e5d6be;
+        }
+        body.theme-sepia .tag-exact {
+            color: #881337;
+            background-color: rgba(253, 164, 175, 0.45);
+            border-bottom: 2px solid #e11d48;
+        }
+        body.theme-sepia .tag-modified {
+            color: #78350f;
+            background-color: rgba(252, 211, 77, 0.45);
+            border-bottom: 2px dashed #d97706;
+        }
+        body.theme-sepia .tag-brief {
+            color: #134e4a;
+            background-color: rgba(153, 246, 228, 0.45);
+            border-bottom: 2px solid #0d9488;
+        }
+
+        /* Inline Shorthand Tags & Superscripts */
+        .inline-annotation {
+            box-decoration-break: clone;
+            -webkit-box-decoration-break: clone;
+            border-radius: 4px;
+            padding: 1px 5px;
+            margin: 0 1px;
+            display: inline-block;
+            transition: all 0.2s ease;
+        }
+        
+        .lecture-sup {
+            font-size: 0.68em;
+            font-weight: 600;
+            margin-left: 2px;
+            vertical-align: super;
+            line-height: 0;
+            letter-spacing: -0.02em;
+            user-select: none;
+        }
+
+        /* Word Blur / Practice Masking Effect */
+        .word-unit {
+            display: inline-block;
+            border-radius: 4px;
+            transition: filter 0.25s ease, opacity 0.25s ease, background-color 0.2s ease, transform 0.15s ease;
+            position: relative;
+        }
+
+        /* Blurred state for words */
+        .word-unit.is-blurred {
+            filter: blur(7px);
+            user-select: none;
+            opacity: 0.45;
+            cursor: pointer;
+        }
+
+        .word-unit.is-blurred:hover {
+            opacity: 0.75;
+            filter: blur(5px);
+        }
+
+        /* Unblurred revealed state */
+        .word-unit.is-unblurred {
+            filter: blur(0px);
+            opacity: 1;
+        }
+
+        /* Focused Active Word Highlight in Practice Mode */
+        .word-unit.is-current-step {
+            box-shadow: 0 0 0 2px #38bdf8, 0 0 12px rgba(56, 189, 248, 0.4);
+            background-color: rgba(56, 189, 248, 0.12);
+            border-radius: 4px;
+            transform: translateY(-1px);
+        }
+
+        .transition-all-custom {
+            transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: rgba(156, 163, 175, 0.3);
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(156, 163, 175, 0.5);
+        }
+    </style>
+</head>
+<body class="theme-dark font-sans min-h-full flex flex-col antialiased transition-colors duration-300">
+
+    <!-- Header Bar -->
+    <header class="border-b border-slate-800/80 transition-colors">
+        <div class="max-w-5xl mx-auto px-4 sm:px-6 py-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div>
+                <h1 class="text-2xl sm:text-3xl font-light tracking-tight font-serif text-slate-100 flex items-center gap-2.5">
+                    <span>Gregg Revision</span>
+                    <span class="text-xs font-sans uppercase tracking-widest px-2.5 py-0.5 rounded-full bg-slate-800 text-slate-400 font-semibold border border-slate-700/60">Reader</span>
+                </h1>
+                <p class="text-sm text-slate-400 mt-1 font-sans">
+                    Shorthand Revision Reader — Distraction-free practice & step-by-step word reveal
+                </p>
+            </div>
+
+            <!-- Header Badge & Theme Selector -->
+            <div class="flex items-center gap-3">
+                <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full card-bg border text-xs text-slate-400">
+                    <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                    100% Local & Private
+                </span>
+
+                <!-- Theme Switcher -->
+                <div class="flex items-center gap-1 bg-slate-800/80 p-1 rounded-lg border border-slate-700/60">
+                    <button onclick="setTheme('dark')" id="theme-btn-dark" title="Midnight Dark" class="p-1.5 rounded bg-slate-700 text-slate-100 shadow-xs">
+                        <svg class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20"><path d="M17.293 13.293A8 8 0 016.707 2.707a8.001 8.001 0 1010.586 10.586z"></path></svg>
+                    </button>
+                    <button onclick="setTheme('sepia')" id="theme-btn-sepia" title="Warm Sepia" class="p-1.5 rounded text-amber-600 hover:text-amber-800 dark:hover:text-amber-400">
+                        <svg class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20"><path d="M9 2a1 1 0 000 2h2a1 1 0 100-2H9z"></path><path fill-rule="evenodd" d="M4 5a2 2 0 012-2 3 3 0 003 3h2a3 3 0 003-3 2 2 0 012 2v11a2 2 0 01-2 2H6a2 2 0 01-2-2V5zm3 4a1 1 0 000 2h6a1 1 0 100-2H7zm0 4a1 1 0 100 2h6a1 1 0 100-2H7z" clip-rule="evenodd"></path></svg>
+                    </button>
+                    <button onclick="setTheme('light')" id="theme-btn-light" title="Light Theme" class="p-1.5 rounded text-amber-500 hover:text-amber-600">
+                        <svg class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20"><path d="M10 2a1 1 0 011 1v1a1 1 0 11-2 0V3a1 1 0 011-1zm4 8a4 4 0 11-8 0 4 4 0 018 0zm-.464 4.95l.707.707a1 1 0 001.414-1.414l-.707-.707a1 1 0 00-1.414 1.414zm2.12-10.607a1 1 0 010 1.414l-.706.707a1 1 0 11-1.414-1.414l.707-.707a1 1 0 011.414 0zM17 11a1 1 0 100-2h-1a1 1 0 100 2h1zm-7 4a1 1 0 011 1v1a1 1 0 11-2 0v-1a1 1 0 011-1zM5.05 6.464A1 1 0 106.465 5.05l-.708-.707a1 1 0 00-1.414 1.414l.707.707zm1.414 8.486l-.707.707a1 1 0 01-1.414-1.414l.707-.707a1 1 0 011.414 1.414zM4 11a1 1 0 100-2H3a1 1 0 100 2h1z"></path></svg>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <main class="flex-1 max-w-5xl w-full mx-auto px-4 sm:px-6 py-8 flex flex-col gap-6">
+
+        <!-- Gemini Input Area Section -->
+        <section id="input-section" class="flex flex-col gap-3 transition-all-custom">
+            <div class="flex items-center justify-between">
+                <label for="gemini-input" class="text-sm font-medium text-slate-300 flex items-center gap-2">
+                    <svg class="w-4 h-4 text-sky-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                    Paste Gemini Coded Revision Passage
+                </label>
+            </div>
+
+            <textarea 
+                id="gemini-input" 
+                rows="6" 
+                class="input-bg w-full rounded-xl p-4 font-mono text-sm border focus:ring-2 focus:ring-sky-500/50 focus:outline-none transition-all resize-y shadow-inner"
+                placeholder="Paste Gemini markup output here... e.g. The <E|race|7,4,1> was exciting because <B|of the|1> large crowd."
+            ></textarea>
+
+            <!-- Primary Actions below Textarea -->
+            <div class="flex items-center gap-3">
+                <button 
+                    id="btn-render" 
+                    onclick="renderRevision()" 
+                    class="px-6 py-2.5 bg-sky-600 hover:bg-sky-500 text-white font-medium text-sm rounded-lg shadow-sm transition-all flex items-center gap-2 active:scale-95"
+                >
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path></svg>
+                    Show Revision
+                </button>
+
+                <button 
+                    id="btn-clear" 
+                    onclick="clearInput()" 
+                    class="px-4 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 font-medium text-sm rounded-lg transition-colors border border-slate-700/60"
+                >
+                    Clear
+                </button>
+            </div>
+        </section>
+
+        <!-- Toolbar & Practice Mode Controls Bar -->
+        <section class="card-bg rounded-xl p-3 sm:p-4 border flex flex-col md:flex-row items-stretch md:items-center justify-between gap-4 shadow-sm">
+            
+            <!-- Left Toolbar Group -->
+            <div class="flex items-center gap-2 flex-wrap">
+                <!-- Word Blur Practice Toggle -->
+                <button 
+                    id="btn-toggle-blur" 
+                    onclick="toggleBlurMode()" 
+                    class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 font-medium text-sm rounded-lg border border-slate-700/80 transition-all flex items-center gap-2"
+                >
+                    <svg id="blur-icon" class="w-4 h-4 text-sky-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858-5.908a10.018 10.018 0 013.682-.763c4.478 0 8.268 2.943 9.542 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21M3 3l18 18"></path></svg>
+                    <span id="blur-btn-text">Blur Words (Practice)</span>
+                </button>
+
+                <!-- Copy Clean Text Button -->
+                <button 
+                    id="btn-copy" 
+                    onclick="copyCleanText()" 
+                    class="px-3.5 py-2 bg-slate-800/80 hover:bg-slate-700 text-slate-300 font-medium text-sm rounded-lg transition-all border border-slate-700/60 flex items-center gap-1.5"
+                    title="Copy English text without shorthand tags or lecture numbers"
+                >
+                    <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3"></path></svg>
+                    Copy Clean Text
+                </button>
+
+                <!-- Fullscreen Mode Button -->
+                <button 
+                    id="btn-fullscreen" 
+                    onclick="toggleFullscreen()" 
+                    class="px-3.5 py-2 bg-slate-800/80 hover:bg-slate-700 text-slate-300 font-medium text-sm rounded-lg transition-all border border-slate-700/60 flex items-center gap-1.5"
+                >
+                    <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4"></path></svg>
+                    Fullscreen
+                </button>
+            </div>
+
+            <!-- Right Reading Preference Toggles -->
+            <div class="flex items-center gap-3 border-t md:border-t-0 pt-3 md:pt-0 border-slate-800 flex-wrap justify-between md:justify-end">
+                
+                <!-- Font Size Selector -->
+                <div class="flex items-center gap-1 bg-slate-800/80 p-1 rounded-lg border border-slate-700/60">
+                    <button onclick="setFontSize('sm')" id="size-sm" class="px-2 py-1 text-xs rounded text-slate-400 hover:text-slate-200 transition-colors">S</button>
+                    <button onclick="setFontSize('md')" id="size-md" class="px-2 py-1 text-xs rounded bg-slate-700 text-slate-100 font-semibold shadow-xs">M</button>
+                    <button onclick="setFontSize('lg')" id="size-lg" class="px-2 py-1 text-xs rounded text-slate-400 hover:text-slate-200 transition-colors">L</button>
+                    <button onclick="setFontSize('xl')" id="size-xl" class="px-2 py-1 text-xs rounded text-slate-400 hover:text-slate-200 transition-colors">XL</button>
+                </div>
+
+                <!-- Font Family Selector -->
+                <div class="flex items-center gap-1 bg-slate-800/80 p-1 rounded-lg border border-slate-700/60">
+                    <button onclick="setFontFamily('serif')" id="font-serif" class="px-2.5 py-1 text-xs font-serif rounded bg-slate-700 text-slate-100 shadow-xs font-semibold">Serif</button>
+                    <button onclick="setFontFamily('sans')" id="font-sans" class="px-2.5 py-1 text-xs font-sans rounded text-slate-400 hover:text-slate-200 transition-colors">Sans</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- Dynamic Practice / Blur Step Navigation Bar (Visible only when Blur Mode is active) -->
+        <section id="blur-step-bar" class="hidden card-bg rounded-xl p-3 border border-sky-500/30 bg-sky-950/20 flex flex-wrap items-center justify-between gap-3 text-sm">
+            <div class="flex items-center gap-2">
+                <span class="w-2 h-2 rounded-full bg-sky-400 animate-ping"></span>
+                <span class="font-medium text-sky-200">Practice Mode Active</span>
+                <span id="step-counter" class="text-xs text-sky-300/80 bg-sky-900/50 px-2 py-0.5 rounded-full border border-sky-700/40 font-mono">0 / 0 words revealed</span>
+            </div>
+
+            <!-- On-screen Step Controls (Mobile & Touch friendly) -->
+            <div class="flex items-center gap-1.5">
+                <button 
+                    onclick="stepPreviousWord()" 
+                    class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-medium rounded-lg border border-slate-700/60 transition-all flex items-center gap-1 active:scale-95"
+                    title="Previous Word (Left Arrow / Up Arrow)"
+                >
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path></svg>
+                    Prev
+                </button>
+
+                <button 
+                    onclick="stepNextWord()" 
+                    class="px-4 py-1.5 bg-sky-600 hover:bg-sky-500 text-white text-xs font-medium rounded-lg transition-all flex items-center gap-1 shadow-sm active:scale-95"
+                    title="Next Word (Spacebar / Right Arrow / Down Arrow)"
+                >
+                    Next
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
+                </button>
+
+                <button 
+                    onclick="resetBlurState()" 
+                    class="px-2.5 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs rounded-lg border border-slate-700/60 transition-colors ml-1"
+                    title="Reset All Words to Blurred (R key)"
+                >
+                    Reset
+                </button>
+            </div>
+
+            <!-- Keyboard Guide Hint -->
+            <div class="text-xs text-slate-400 font-mono w-full sm:w-auto text-center sm:text-right border-t sm:border-t-0 pt-2 sm:pt-0 border-slate-800">
+                <span class="text-slate-300 bg-slate-800 px-1.5 py-0.5 rounded border border-slate-700">Space</span> or <span class="text-slate-300 bg-slate-800 px-1.5 py-0.5 rounded border border-slate-700">→</span> next word • <span class="text-slate-300 bg-slate-800 px-1.5 py-0.5 rounded border border-slate-700">R</span> reset
+            </div>
+        </section>
+
+        <!-- Toast Notification Banner -->
+        <div id="status-toast" class="hidden transition-all duration-300">
+            <div id="toast-content" class="px-4 py-2.5 rounded-lg text-sm flex items-center justify-between border shadow-sm">
+                <span id="toast-message">Notification message</span>
+                <button onclick="hideToast()" class="ml-4 opacity-70 hover:opacity-100">&times;</button>
+            </div>
+        </div>
+
+        <!-- Main Formatted Reading Passage Canvas -->
+        <section id="reading-container" class="reading-canvas rounded-2xl p-6 sm:p-10 md:p-12 border transition-all duration-300 min-h-[350px] flex flex-col justify-between relative">
+            
+            <!-- Fullscreen Mode Top Bar -->
+            <div id="fullscreen-topbar" class="hidden pb-6 border-b border-slate-800 mb-8 flex items-center justify-between">
+                <div class="flex items-center gap-3">
+                    <span class="text-xs uppercase tracking-widest font-sans font-semibold text-slate-400">Gregg Reading Mode</span>
+                </div>
+                <button 
+                    onclick="toggleFullscreen()" 
+                    class="px-3 py-1.5 rounded-lg bg-slate-800 text-xs font-medium text-slate-300 hover:bg-slate-700 transition-colors flex items-center gap-1.5 border border-slate-700"
+                >
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                    Exit Fullscreen (Esc)
+                </button>
+            </div>
+
+            <!-- Reading View Container -->
+            <div id="reading-view" class="font-serif text-lg leading-loose transition-all duration-200">
+                <!-- Empty State Placeholder -->
+                <div id="empty-state" class="text-center py-16 px-4 font-sans text-slate-500">
+                    <svg class="w-12 h-12 mx-auto mb-3 opacity-30 stroke-1 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"></path></svg>
+                    <p class="text-base font-medium text-slate-400">Paste your Gemini revision passage above and click "Show Revision".</p>
+                    <p class="text-xs mt-1 text-slate-500">The website parses your markup and formats clean text with exact words, modified rules, and brief phrases highlighted.</p>
+                </div>
+            </div>
+
+            <!-- Minimalist Legend & Statistics Footer -->
+            <div id="reading-legend" class="mt-12 pt-6 border-t border-slate-800/80 flex flex-wrap items-center justify-between gap-4 text-xs font-sans text-slate-400">
+                <div class="flex items-center gap-4 sm:gap-6 flex-wrap">
+                    <div class="flex items-center gap-1.5">
+                        <span class="tag-exact font-serif text-sm">race<sup class="lecture-sup">7,4,1</sup></span>
+                        <span>Exact Learned Word</span>
+                    </div>
+                    <div class="flex items-center gap-1.5">
+                        <span class="tag-modified font-serif text-sm">racing<sup class="lecture-sup">-1</sup></span>
+                        <span>Modified Word</span>
+                    </div>
+                    <div class="flex items-center gap-1.5">
+                        <span class="tag-brief font-serif text-sm">of the<sup class="lecture-sup">1</sup></span>
+                        <span>Brief Phrase</span>
+                    </div>
+                </div>
+
+                <div id="stats-counter" class="text-xs text-slate-500 hidden sm:block">
+                    <!-- Word stats populated dynamically -->
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- Footer -->
+    <footer class="py-6 border-t border-slate-800/80 mt-auto transition-colors">
+        <div class="max-w-5xl mx-auto px-4 text-center text-xs text-slate-500 font-sans">
+            Gregg Shorthand Revision Reader — Distraction-free practice environment.
+        </div>
+    </footer>
+
+    <!-- Application Logic Script -->
+    <script>
+        // State Variables
+        let currentTheme = 'dark';
+        let isFullscreen = false;
+        let isBlurMode = false;
+        let currentWordIndex = -1; // -1 means all words blurred
+        let totalWordUnits = 0;
+        let lastCleanText = '';
+
+        /**
+         * Robust Parser for Gemini Shorthand Markup:
+         *   <E|word|7,4,1> -> Exact word
+         *   <M|word|1>     -> Modified word (-1)
+         *   <B|word phrase|1> -> Brief phrase
+         */
+        function parseGeminiMarkup(rawText) {
+            const tagRegex = /<([EMB])\|([^|]+)\|([^>]+)>/g;
+            let lastIndex = 0;
+            const nodes = [];
+            let parseErrors = false;
+            let match;
+
+            while ((match = tagRegex.exec(rawText)) !== null) {
+                // Collect plain text segment preceding tag
+                if (match.index > lastIndex) {
+                    const plain = rawText.slice(lastIndex, match.index);
+                    nodes.push({ type: 'text', text: plain });
+                }
+
+                const tagType = match[1];     // 'E', 'M', or 'B'
+                const wordText = match[2];    // Inside text
+                const lectures = match[3];    // Lecture list string
+
+                if ((tagType === 'E' || tagType === 'M' || tagType === 'B') && wordText) {
+                    nodes.push({
+                        type: tagType,
+                        text: wordText,
+                        lectures: lectures.trim()
+                    });
+                } else {
+                    parseErrors = true;
+                    nodes.push({ type: 'text', text: match[0] });
+                }
+
+                lastIndex = tagRegex.lastIndex;
+            }
+
+            // Append remaining trailing text
+            if (lastIndex < rawText.length) {
+                nodes.push({ type: 'text', text: rawText.slice(lastIndex) });
+            }
+
+            return { nodes, parseErrors };
+        }
+
+        /**
+         * Renders the revision passage into clean DOM nodes,
+         * wrapping every word unit with data attributes for blur step navigation.
+         */
+        function renderRevision() {
+            const inputEl = document.getElementById('gemini-input');
+            const viewEl = document.getElementById('reading-view');
+            const rawText = inputEl.value;
+
+            if (!rawText.trim()) {
+                viewEl.innerHTML = `
+                    <div id="empty-state" class="text-center py-16 px-4 font-sans text-slate-500">
+                        <svg class="w-12 h-12 mx-auto mb-3 opacity-30 stroke-1 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"></path></svg>
+                        <p class="text-base font-medium text-slate-400">Paste your Gemini revision passage above and click "Show Revision".</p>
+                        <p class="text-xs mt-1 text-slate-500">The website parses your markup and formats clean text with exact words, modified rules, and brief phrases highlighted.</p>
+                    </div>
+                `;
+                document.getElementById('stats-counter').innerHTML = '';
+                lastCleanText = '';
+                totalWordUnits = 0;
+                currentWordIndex = -1;
+                updateBlurStepUI();
+                return;
+            }
+
+            const { nodes, parseErrors } = parseGeminiMarkup(rawText);
+
+            if (parseErrors) {
+                showToast("Some revision markers had invalid syntax and were rendered as plain text.", "warning");
+            } else {
+                hideToast();
+            }
+
+            viewEl.innerHTML = '';
+
+            let countExact = 0;
+            let countModified = 0;
+            let countBrief = 0;
+            let cleanTextBuffer = [];
+            let wordIndexCounter = 0;
+
+            let currentParagraph = createParagraphElement();
+
+            nodes.forEach(node => {
+                if (node.type === 'text') {
+                    cleanTextBuffer.push(node.text);
+
+                    // Split text node by paragraph breaks (\n\n) or newlines (\n)
+                    const paragraphs = node.text.split(/\n\s*\n/);
+
+                    paragraphs.forEach((paraText, pIdx) => {
+                        if (pIdx > 0) {
+                            if (currentParagraph.childNodes.length > 0) {
+                                viewEl.appendChild(currentParagraph);
+                            }
+                            currentParagraph = createParagraphElement();
+                        }
+
+                        // Split plain text into words vs spaces/punctuation to allow per-word blurring
+                        const tokens = paraText.split(/(\s+)/);
+
+                        tokens.forEach(token => {
+                            if (!token) return;
+
+                            if (/^\s+$/.test(token)) {
+                                // Preserve spaces/newlines without blurring
+                                if (token.includes('\n')) {
+                                    const lines = token.split('\n');
+                                    lines.forEach((l, lIdx) => {
+                                        if (lIdx > 0) currentParagraph.appendChild(document.createElement('br'));
+                                        if (l) currentParagraph.appendChild(document.createTextNode(l));
+                                    });
+                                } else {
+                                    currentParagraph.appendChild(document.createTextNode(token));
+                                }
+                            } else {
+                                // Plain Word Unit
+                                const wordSpan = document.createElement('span');
+                                wordSpan.className = 'word-unit';
+                                wordSpan.setAttribute('data-word-index', wordIndexCounter);
+                                wordSpan.appendChild(document.createTextNode(token));
+                                attachWordClick(wordSpan, wordIndexCounter);
+
+                                currentParagraph.appendChild(wordSpan);
+                                wordIndexCounter++;
+                            }
+                        });
+                    });
+
+                } else {
+                    // Tagged Shorthand Element (<E>, <M>, <B>)
+                    cleanTextBuffer.push(node.text);
+
+                    const outerSpan = document.createElement('span');
+                    outerSpan.className = 'word-unit';
+                    outerSpan.setAttribute('data-word-index', wordIndexCounter);
+                    attachWordClick(outerSpan, wordIndexCounter);
+
+                    const tagSpan = document.createElement('span');
+                    let tagClass = '';
+                    let superPrefix = '';
+
+                    if (node.type === 'E') {
+                        tagClass = 'tag-exact inline-annotation';
+                        countExact++;
+                    } else if (node.type === 'M') {
+                        tagClass = 'tag-modified inline-annotation';
+                        superPrefix = '-';
+                        countModified++;
+                    } else if (node.type === 'B') {
+                        tagClass = 'tag-brief inline-annotation';
+                        countBrief++;
+                    }
+
+                    tagSpan.className = tagClass;
+                    tagSpan.appendChild(document.createTextNode(node.text));
+
+                    // Add superscript lecture numbers
+                    if (node.lectures) {
+                        const sup = document.createElement('sup');
+                        sup.className = 'lecture-sup';
+                        sup.textContent = superPrefix + node.lectures;
+                        tagSpan.appendChild(sup);
+                    }
+
+                    outerSpan.appendChild(tagSpan);
+                    currentParagraph.appendChild(outerSpan);
+                    wordIndexCounter++;
+                }
+            });
+
+            if (currentParagraph.childNodes.length > 0) {
+                viewEl.appendChild(currentParagraph);
+            }
+
+            totalWordUnits = wordIndexCounter;
+            lastCleanText = cleanTextBuffer.join('');
+
+            // Calculate total word count
+            const totalWords = lastCleanText.trim().split(/\s+/).filter(Boolean).length;
+            document.getElementById('stats-counter').innerHTML = `
+                <span class="font-medium">${totalWords}</span> words • 
+                <span class="text-red-400 font-medium">${countExact}</span> exact • 
+                <span class="text-amber-400 font-medium">${countModified}</span> modified • 
+                <span class="text-teal-400 font-medium">${countBrief}</span> briefs
+            `;
+
+            // Reset or reapply blur state
+            if (isBlurMode) {
+                applyBlurToAllWords();
+                currentWordIndex = -1;
+                updateBlurStepUI();
+            }
+        }
+
+        function createParagraphElement() {
+            const p = document.createElement('p');
+            p.className = 'paragraph-block mb-6 leading-loose text-justify sm:text-left font-normal';
+            return p;
+        }
+
+        // Attach click handler to individual words in Practice Mode
+        function attachWordClick(element, index) {
+            element.addEventListener('click', () => {
+                if (!isBlurMode) return;
+                
+                // Reveal up to clicked word
+                revealUpToWord(index);
+            });
+        }
+
+
+        /**
+         * Word Blur Practice Mode Controls
+         */
+        function toggleBlurMode() {
+            if (totalWordUnits === 0) {
+                showToast("Paste a passage and click 'Show Revision' first.", "warning");
+                return;
+            }
+
+            isBlurMode = !isBlurMode;
+            const btn = document.getElementById('btn-toggle-blur');
+            const btnText = document.getElementById('blur-btn-text');
+            const icon = document.getElementById('blur-icon');
+            const stepBar = document.getElementById('blur-step-bar');
+
+            if (isBlurMode) {
+                btn.classList.add('bg-sky-600', 'text-white', 'border-sky-500');
+                btn.classList.remove('bg-slate-800', 'text-slate-200');
+                btnText.textContent = "Exit Blur Mode";
+                icon.innerHTML = `<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>`;
+                
+                stepBar.classList.remove('hidden');
+                applyBlurToAllWords();
+                currentWordIndex = -1;
+                updateBlurStepUI();
+                showToast("Blur Practice Mode enabled. Press Spacebar or Arrow Key to reveal word-by-word.", "info");
+            } else {
+                btn.classList.remove('bg-sky-600', 'text-white', 'border-sky-500');
+                btn.classList.add('bg-slate-800', 'text-slate-200');
+                btnText.textContent = "Blur Words (Practice)";
+                icon.innerHTML = `<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858-5.908a10.018 10.018 0 013.682-.763c4.478 0 8.268 2.943 9.542 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21M3 3l18 18"></path>`;
+                
+                stepBar.classList.add('hidden');
+                removeAllBlurFromWords();
+            }
+        }
+
+        function applyBlurToAllWords() {
+            const wordNodes = document.querySelectorAll('.word-unit');
+            wordNodes.forEach(node => {
+                node.classList.add('is-blurred');
+                node.classList.remove('is-unblurred', 'is-current-step');
+            });
+        }
+
+        function removeAllBlurFromWords() {
+            const wordNodes = document.querySelectorAll('.word-unit');
+            wordNodes.forEach(node => {
+                node.classList.remove('is-blurred', 'is-current-step');
+                node.classList.add('is-unblurred');
+            });
+        }
+
+        function stepNextWord() {
+            if (!isBlurMode || totalWordUnits === 0) return;
+
+            if (currentWordIndex < totalWordUnits - 1) {
+                currentWordIndex++;
+                updateWordBlurVisuals();
+                scrollWordIntoView(currentWordIndex);
+            }
+        }
+
+        function stepPreviousWord() {
+            if (!isBlurMode || totalWordUnits === 0) return;
+
+            if (currentWordIndex >= 0) {
+                currentWordIndex--;
+                updateWordBlurVisuals();
+                if (currentWordIndex >= 0) {
+                    scrollWordIntoView(currentWordIndex);
+                }
+            }
+        }
+
+        function revealUpToWord(targetIndex) {
+            if (!isBlurMode) return;
+            currentWordIndex = targetIndex;
+            updateWordBlurVisuals();
+            scrollWordIntoView(targetIndex);
+        }
+
+        function resetBlurState() {
+            if (!isBlurMode) return;
+            currentWordIndex = -1;
+            applyBlurToAllWords();
+            updateBlurStepUI();
+        }
+
+        function updateWordBlurVisuals() {
+            const wordNodes = document.querySelectorAll('.word-unit');
+            wordNodes.forEach((node, idx) => {
+                if (idx <= currentWordIndex) {
+                    node.classList.remove('is-blurred');
+                    node.classList.add('is-unblurred');
+                } else {
+                    node.classList.add('is-blurred');
+                    node.classList.remove('is-unblurred');
+                }
+
+                if (idx === currentWordIndex) {
+                    node.classList.add('is-current-step');
+                } else {
+                    node.classList.remove('is-current-step');
+                }
+            });
+
+            updateBlurStepUI();
+        }
+
+        function updateBlurStepUI() {
+            const counterEl = document.getElementById('step-counter');
+            if (counterEl) {
+                const revealedCount = currentWordIndex < 0 ? 0 : currentWordIndex + 1;
+                counterEl.textContent = `${revealedCount} / ${totalWordUnits} words revealed`;
+            }
+        }
+
+        function scrollWordIntoView(index) {
+            const targetEl = document.querySelector(`[data-word-index="${index}"]`);
+            if (targetEl) {
+                targetEl.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'nearest' });
+            }
+        }
+
+
+        /**
+         * Global Keyboard Shortcuts for Practice Mode
+         */
+        document.addEventListener('keydown', (e) => {
+            // Do not intercept keystrokes if typing inside textarea or input elements
+            const activeTag = document.activeElement ? document.activeElement.tagName.toLowerCase() : '';
+            if (activeTag === 'textarea' || activeTag === 'input') {
+                return;
+            }
+
+            if (!isBlurMode) return;
+
+            // Space, Arrow Right, Arrow Down -> Next Word
+            if (e.code === 'Space' || e.key === 'ArrowRight' || e.key === 'ArrowDown') {
+                e.preventDefault();
+                stepNextWord();
+            }
+            // Arrow Left, Arrow Up -> Previous Word
+            else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
+                e.preventDefault();
+                stepPreviousWord();
+            }
+            // 'R' or 'r' -> Reset Blur State
+            else if (e.key === 'r' || e.key === 'R') {
+                e.preventDefault();
+                resetBlurState();
+            }
+        });
+
+
+        /**
+         * Input and Text Utilities
+         */
+        function clearInput() {
+            document.getElementById('gemini-input').value = '';
+            renderRevision();
+            hideToast();
+        }
+
+        function copyCleanText() {
+            const rawText = document.getElementById('gemini-input').value;
+            if (!rawText.trim()) {
+                showToast("Nothing to copy yet. Paste a passage first.", "warning");
+                return;
+            }
+
+            // Strip shorthand markup leaving clean English text
+            const cleanText = rawText.replace(/<[EMB]\|([^|]+)\|[^>]+>/g, '$1');
+
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(cleanText).then(() => {
+                    showToast("Clean English text copied to clipboard!", "success");
+                }).catch(() => {
+                    fallbackCopy(cleanText);
+                });
+            } else {
+                fallbackCopy(cleanText);
+            }
+        }
+
+        function fallbackCopy(text) {
+            const textArea = document.createElement("textarea");
+            textArea.value = text;
+            textArea.style.position = "fixed";
+            document.body.appendChild(textArea);
+            textArea.focus();
+            textArea.select();
+            try {
+                document.execCommand('copy');
+                showToast("Clean English text copied to clipboard!", "success");
+            } catch (err) {
+                showToast("Failed to copy automatically. Select text manually.", "warning");
+            }
+            document.body.removeChild(textArea);
+        }
+
+        // Fullscreen Toggle
+        function toggleFullscreen() {
+            isFullscreen = !isFullscreen;
+            const inputSec = document.getElementById('input-section');
+            const topbar = document.getElementById('fullscreen-topbar');
+            const readingContainer = document.getElementById('reading-container');
+
+            if (isFullscreen) {
+                inputSec.classList.add('hidden');
+                topbar.classList.remove('hidden');
+                readingContainer.classList.add('fixed', 'inset-0', 'z-50', 'm-0', 'rounded-none', 'overflow-y-auto', 'max-w-none');
+                document.body.classList.add('overflow-hidden');
+            } else {
+                inputSec.classList.remove('hidden');
+                topbar.classList.add('hidden');
+                readingContainer.classList.remove('fixed', 'inset-0', 'z-50', 'm-0', 'rounded-none', 'overflow-y-auto', 'max-w-none');
+                document.body.classList.remove('overflow-hidden');
+            }
+        }
+
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && isFullscreen) {
+                toggleFullscreen();
+            }
+        });
+
+
+        /**
+         * Font Customization
+         */
+        function setFontSize(size) {
+            const view = document.getElementById('reading-view');
+            view.classList.remove('text-base', 'text-lg', 'text-xl', 'text-2xl');
+
+            const btns = ['size-sm', 'size-md', 'size-lg', 'size-xl'];
+            btns.forEach(id => {
+                document.getElementById(id).className = "px-2 py-1 text-xs rounded text-slate-400 hover:text-slate-200 transition-colors";
+            });
+
+            const activeClass = "px-2 py-1 text-xs rounded bg-slate-700 text-slate-100 font-semibold shadow-xs";
+
+            if (size === 'sm') {
+                view.classList.add('text-base');
+                document.getElementById('size-sm').className = activeClass;
+            } else if (size === 'md') {
+                view.classList.add('text-lg');
+                document.getElementById('size-md').className = activeClass;
+            } else if (size === 'lg') {
+                view.classList.add('text-xl');
+                document.getElementById('size-lg').className = activeClass;
+            } else if (size === 'xl') {
+                view.classList.add('text-2xl');
+                document.getElementById('size-xl').className = activeClass;
+            }
+        }
+
+        function setFontFamily(family) {
+            const view = document.getElementById('reading-view');
+            const fontSerif = document.getElementById('font-serif');
+            const fontSans = document.getElementById('font-sans');
+
+            const activeClass = "px-2.5 py-1 text-xs rounded bg-slate-700 text-slate-100 shadow-xs font-semibold";
+            const inactiveClass = "px-2.5 py-1 text-xs rounded text-slate-400 hover:text-slate-200 transition-colors";
+
+            if (family === 'serif') {
+                view.classList.remove('font-sans');
+                view.classList.add('font-serif');
+                fontSerif.className = activeClass + ' font-serif';
+                fontSans.className = inactiveClass + ' font-sans';
+            } else {
+                view.classList.remove('font-serif');
+                view.classList.add('font-sans');
+                fontSans.className = activeClass + ' font-sans';
+                fontSerif.className = inactiveClass + ' font-serif';
+            }
+        }
+
+
+        /**
+         * Theme Switcher (Dark Default)
+         */
+        function setTheme(theme) {
+            currentTheme = theme;
+            document.body.classList.remove('theme-light', 'theme-sepia', 'theme-dark');
+            document.body.classList.add('theme-' + theme);
+
+            const btnLight = document.getElementById('theme-btn-light');
+            const btnSepia = document.getElementById('theme-btn-sepia');
+            const btnDark = document.getElementById('theme-btn-dark');
+
+            [btnLight, btnSepia, btnDark].forEach(b => b.classList.remove('bg-slate-700', 'text-slate-100', 'bg-white', 'shadow-xs'));
+
+            if (theme === 'dark') {
+                btnDark.classList.add('bg-slate-700', 'text-slate-100', 'shadow-xs');
+            } else if (theme === 'sepia') {
+                btnSepia.classList.add('bg-amber-200', 'text-amber-900', 'shadow-xs');
+            } else if (theme === 'light') {
+                btnLight.classList.add('bg-white', 'text-slate-900', 'shadow-xs');
+            }
+        }
+
+        function showToast(msg, type = 'info') {
+            const toast = document.getElementById('status-toast');
+            const content = document.getElementById('toast-content');
+            const message = document.getElementById('toast-message');
+
+            message.textContent = msg;
+
+            if (type === 'warning') {
+                content.className = "px-4 py-2.5 rounded-lg text-sm flex items-center justify-between border shadow-sm bg-amber-950/60 text-amber-300 border-amber-800";
+            } else if (type === 'success') {
+                content.className = "px-4 py-2.5 rounded-lg text-sm flex items-center justify-between border shadow-sm bg-emerald-950/60 text-emerald-300 border-emerald-800";
+            } else {
+                content.className = "px-4 py-2.5 rounded-lg text-sm flex items-center justify-between border shadow-sm card-bg text-slate-300 border-slate-700";
+            }
+
+            toast.classList.remove('hidden');
+        }
+
+        function hideToast() {
+            document.getElementById('status-toast').classList.add('hidden');
+        }
+
+        // Live update as user types/pastes into the input area
+        document.getElementById('gemini-input').addEventListener('input', () => {
+            renderRevision();
+        });
+
+        // Initialize Dark Theme default on load
+        window.addEventListener('DOMContentLoaded', () => {
+            setTheme('dark');
+        });
+    </script>
+</body>
+</html>
